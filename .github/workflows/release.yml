@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+  actions: read
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -38,16 +42,13 @@ jobs:
       id: tag_name
       run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
+    - name: Create Release and Upload APK
       env:
-        GITHUB_TOKEN: ${{ secrets.LADB_TOKEN }}
-      with:
-        tag_name: ${{ steps.tag_name.outputs.TAG_NAME }}
-        release_name: ADB Quest ${{ steps.tag_name.outputs.TAG_NAME }}
-        body: |
-          ## ADB Quest ${{ steps.tag_name.outputs.TAG_NAME }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release create "${{ steps.tag_name.outputs.TAG_NAME }}" \
+          --title "ADB Quest ${{ steps.tag_name.outputs.TAG_NAME }}" \
+          --notes "## ADB Quest ${{ steps.tag_name.outputs.TAG_NAME }}
           
           ### 🚀 주요 기능
           - 자동 네트워크 스캔으로 Quest 기기 검색
@@ -63,16 +64,15 @@ jobs:
           ### 🔧 사용법
           - 네트워크 스캔으로 Quest 자동 검색
           - 또는 Quest IP 직접 입력
-          - Connect 버튼으로 ADB 연결 및 무선 모드 활성화
-        draft: false
-        prerelease: false
+          - Connect 버튼으로 ADB 연결 및 무선 모드 활성화" \
+          app/build/outputs/apk/release/app-release-unsigned.apk#adb-quest-${{ steps.tag_name.outputs.TAG_NAME }}.apk
 
-    - name: Upload Release APK
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Post Cache Gradle packages
+      uses: actions/cache@v4
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: app/build/outputs/apk/release/app-release-unsigned.apk
-        asset_name: adb-quest-${{ steps.tag_name.outputs.TAG_NAME }}.apk
-        asset_content_type: application/vnd.android.package-archive 
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle- 
