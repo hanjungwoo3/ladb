@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Build Release APK
+      run: ./gradlew assembleRelease
+
+    - name: Get tag name
+      id: tag_name
+      run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.tag_name.outputs.TAG_NAME }}
+        release_name: ADB Quest ${{ steps.tag_name.outputs.TAG_NAME }}
+        body: |
+          ## ADB Quest ${{ steps.tag_name.outputs.TAG_NAME }}
+          
+          ### 🚀 주요 기능
+          - 자동 네트워크 스캔으로 Quest 기기 검색
+          - ADB 연결 상태 실시간 확인
+          - TCPIP 5555 자동 활성화
+          - 직관적인 UI로 원클릭 연결
+          
+          ### 📱 설치 방법
+          1. 아래 APK 파일 다운로드
+          2. Android 기기에서 설치
+          3. 위치 권한 허용 후 사용
+          
+          ### 🔧 사용법
+          - 네트워크 스캔으로 Quest 자동 검색
+          - 또는 Quest IP 직접 입력
+          - Connect 버튼으로 ADB 연결 및 무선 모드 활성화
+        draft: false
+        prerelease: false
+
+    - name: Upload Release APK
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: app/build/outputs/apk/release/app-release-unsigned.apk
+        asset_name: adb-quest-${{ steps.tag_name.outputs.TAG_NAME }}.apk
+        asset_content_type: application/vnd.android.package-archive 
