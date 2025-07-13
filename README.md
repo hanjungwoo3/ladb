@@ -61,6 +61,35 @@ Oculus Quest와 Android 기기 간 무선 ADB 연결을 관리하는 Android 앱
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
 ```
 
+#### 🔐 권한이 필요한 이유
+
+**📱 설치 시 자동 허용되는 권한:**
+- **INTERNET**: ADB 소켓 연결 및 네트워크 통신용
+- **ACCESS_WIFI_STATE**: WiFi 연결 상태 확인 및 현재 IP 주소 획득용
+
+**⚠️ 사용자 승인이 필요한 권한:**
+- **ACCESS_COARSE_LOCATION** / **ACCESS_FINE_LOCATION**: 위치 권한
+
+**🤔 왜 위치 권한이 필요한가요?**
+
+앱은 실제로 GPS 위치를 사용하지 않습니다. 하지만 Android 6.0 이후부터 보안상의 이유로 WiFi 정보 접근 시 위치 권한이 필수가 되었습니다.
+
+**실제 동작 방식:**
+1. **현재 기기 IP 확인**: `WifiManager.getConnectionInfo().ipAddress` 호출
+2. **서브넷 추출**: 예) `192.168.1.100` → `192.168.1` 
+3. **동일 서브넷 스캔**: `192.168.1.1` ~ `192.168.1.255` 범위에서 포트 5555 연결 시도
+4. **ADB 기기 검색**: 연결 성공한 IP를 ADB 활성화된 기기로 판단
+
+**위치 권한 없이는:**
+- `WifiManager`가 실제 IP 대신 `0.0.0.0` 반환
+- 네트워크 스캔 기능 사용 불가
+- 수동 IP 입력은 여전히 가능
+
+**📍 개인정보 보호:**
+- 앱은 실제 위치 데이터를 수집하지 않음
+- 오직 현재 네트워크의 IP 주소 정보만 사용
+- 네트워크 스캔은 로컬 서브넷에만 제한됨
+
 ### 핵심 구현
 - **ADB 프로토콜**: 실제 ADB handshake 구현
 - **네트워크 스캔**: Coroutines 기반 비동기 스캔
